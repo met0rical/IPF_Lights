@@ -62,7 +62,7 @@ void setup() {
 		setup_blink(2);
 	}
 	if ((mode_sel1 == HIGH) && (mode_sel2 == HIGH)) {
-		node = 3;
+		node = 2;
 		setup_blink(3);
 	}
 	Serial.print("Remote node set to address ");
@@ -93,6 +93,8 @@ void loop() {
 		digitalWrite(grnLed, LOW);
 		break;
 	case 1: //Call receieved by other remote, waiting for call
+		if (digitalRead(redBtn)) ackData = 1;
+		if (digitalRead(whtBtn)) ackData = 2;
 		digitalWrite(bluLed, HIGH);
 		digitalWrite(grnLed, LOW);
 		break;

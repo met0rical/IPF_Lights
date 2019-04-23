@@ -1,4 +1,6 @@
 
+#include <RF24_config.h>
+#include <printf.h>
 #include <SPI.h>
 #include <nRF24L01.h>
 #include <RF24.h>
@@ -36,7 +38,7 @@ unsigned long timeoutMillis;
 unsigned long displayMillis;
 unsigned long timeoutLengthMillis = 15000;
 unsigned long displayLengthMillis = 15000;
-unsigned long txIntervalMillis = 500; // send twice per second
+unsigned long txIntervalMillis = 250; // send twice per second
 
 //===============
 
@@ -107,16 +109,19 @@ void loop() {
 		break;
 
 	case 1: //First judement made, blue lights lit on remotes, remaining judges have 15 seconds to make a judgement
-		Serial.println("Sequence state 1");
+		Serial.print("Sequence state 1: ");
+		Serial.print(rcvData[0]);
+		Serial.print(rcvData[1]);
+		Serial.println(rcvData[2]);
 		if (currentMillis - timeoutMillis >= timeoutLengthMillis) {
 			seqState = 2; //Timeout has occured
 			displayMillis = millis();
 			break;
 		}
 
-		if (remData[0] != 0) remData[0] = rcvData[0]; //Store remote data locally
-		if (remData[1] != 0) remData[1] = rcvData[1];
-		if (remData[2] != 0) remData[2] = rcvData[2];
+		if (remData[0] == 0) remData[0] = rcvData[0]; //Store remote data locally
+		if (remData[1] == 0) remData[1] = rcvData[1];
+		if (remData[2] == 0) remData[2] = rcvData[2];
 
 		if (remData[0] != 0) sndData[0] = 2; //Blue and Green light on remote
 		if (remData[1] != 0) sndData[1] = 2; //Blue and Green light on remote
@@ -130,7 +135,11 @@ void loop() {
 		break;
 
 	case 2: //All judgements made, light the corresponding lamps for 15 seconds
-		Serial.println("Sequence state 2");
+		Serial.print("Sequence state 2: ");
+		Serial.print(remData[0]);
+		Serial.print(remData[1]);
+		Serial.println(remData[2]);
+
 		if (currentMillis - displayMillis >= displayLengthMillis) {
 			seqState = 3; //Clear all outputs and states
 			break;
@@ -173,7 +182,10 @@ void loop() {
 		break;
 
 	case 99: //Test mode, light corresponding lamp while red/white button is pressed for each remote
-		Serial.println("Sequence state 99");
+		Serial.print("Sequence state 99: Data ");
+		Serial.print(rcvData[0]);
+		Serial.print(rcvData[1]);
+		Serial.println(rcvData[2]);
 
 		if (!digitalRead(A0)) { //Statement for exiting test mode
 			seqState = 0;
