@@ -15,6 +15,7 @@ const byte slaveAddress[3][5] = {
 						{'R','x','A','A','B'},
 						{'R','x','A','A','C'}
 };
+const int redLed = 6;
 const int grnLed = 5;
 const int bluLed = 4;
 const int whtBtn = 3;
@@ -23,12 +24,15 @@ const int redBtn = 2;
 unsigned long currentMillis;
 unsigned long prevMillis;
 unsigned long blinkMillis = 250;
+unsigned long timeoutMillis = 5000;
+unsigned long timeoutPrevMillis;
 
 RF24 radio(CE_PIN, CSN_PIN);
 
 int rcvData; // this must match dataToSend in the TX
 int ackData = 0; // the two values to be sent to the master
 int node = 0;
+bool timeout;
 
 //==============
 
@@ -40,6 +44,7 @@ void setup() {
 	pinMode(whtBtn, INPUT);
 	pinMode(grnLed, OUTPUT);
 	pinMode(bluLed, OUTPUT);
+	pinMode(redLed, OUTPUT);
 
 	Serial.begin(9600);
 
@@ -85,31 +90,46 @@ void loop() {
 
 	currentMillis = millis();
 
+	if (timeout == false) rcvData = 99; //preemptively circumvent switch statement in the event of a timeout
+
+
 	switch (rcvData) {
 	case 0: //Steady state waiting for a call
 		if (digitalRead(redBtn)) ackData = 1;
 		if (digitalRead(whtBtn)) ackData = 2;
 		digitalWrite(bluLed, LOW);
 		digitalWrite(grnLed, LOW);
+		digitalWrite(redLed, LOW);
 		break;
 	case 1: //Call receieved by other remote, waiting for call
 		if (digitalRead(redBtn)) ackData = 1;
 		if (digitalRead(whtBtn)) ackData = 2;
 		digitalWrite(bluLed, HIGH);
 		digitalWrite(grnLed, LOW);
+		digitalWrite(redLed, LOW);
 		break;
 	case 2: //Call recieved and confirmed
 		digitalWrite(bluLed, HIGH);
 		digitalWrite(grnLed, HIGH);
+		digitalWrite(redLed, LOW);
 		ackData = 0;
 		break;
 	case 3: //Test mode
+		digitalWrite(redLed, LOW);
 		if (digitalRead(redBtn)) ackData = 1;
 		else if (digitalRead(whtBtn)) ackData = 2;
 		else ackData = 0;
 		if (currentMillis - prevMillis >= blinkMillis) {
 			digitalWrite(bluLed, !digitalRead(bluLed));
 			digitalWrite(grnLed, !digitalRead(grnLed));
+			prevMillis = millis();
+		}
+		break;
+	case 99:
+		digitalWrite(bluLed, LOW);
+		digitalWrite(grnLed, LOW);
+		if (currentMillis - prevMillis >= blinkMillis) {
+			digitalWrite(redLed, !digitalRead(redLed));
 			prevMillis = millis();
 		}
 		break;
@@ -120,6 +140,9 @@ void loop() {
 	Serial.println(ackData);
 	radio.writeAckPayload(1, &ackData, sizeof(ackData)); //prepares ack payload for when polled by master
 	getData();
+
+	if (currentMillis - timeoutPrevMillis >= timeoutMillis) timeout = true;
+	else timeout = false;
 }
 
 //============
@@ -127,6 +150,7 @@ void loop() {
 void getData() {
 	if (radio.available()) {
 		radio.read(&rcvData, sizeof(rcvData));
+		timeoutPrevMillis = millis();
 	}
 }
 
